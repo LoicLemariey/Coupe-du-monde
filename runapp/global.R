@@ -6,12 +6,42 @@ library(readxl)
 library(dplyr)
 library(purrr)
 library(tidyr)
+library(shinyjs)
+library(rhandsontable)
 
 # ---------------------------------
 # PARAMETRES
 # ---------------------------------
 
 N_SIM <- 5000
+tab_names <- c("A","B","C","D","E","F","G","H","I","J","K","L")
+
+#test_matches<-read_xlsx("runapp/www/scores.xlsx")
+
+
+renderer_lock<- "function(instance, td) {
+                    Handsontable.renderers.TextRenderer.apply(this, arguments);
+                    td.style.background = '#f0f0f0';
+                }
+            "
+
+assignment<-read_xlsx("www/round32assignment.xlsx")
+annexe <- read.csv(
+    "www/third.txt",
+    sep = ";",
+    header = TRUE,
+    stringsAsFactors = FALSE
+)[,-1]
+
+
+
+
+
+
+annexe$combination <- apply(annexe, 1, function(x) {
+    paste(sort(x), collapse = "/")
+})
+
 
 # ---------------------------------
 # CLASSEMENT
@@ -19,15 +49,56 @@ N_SIM <- 5000
 
 
 
+compute_assignment<-function(assignment,third_qualified,rank_table){
+    index<-which(annexe$combination==third_qualified)
+    third<-t(annexe[index,-dim(annexe)[2]])
+    first<-names(annexe)[-dim(annexe)[2]]
+    df_1_3<-data.frame(first=first,third=third)
+    
+    
+    assignment_bis<-assignment[is.na(assignment$group_team_2),] %>%
+        arrange(group_team_1) %>%
+        mutate(group_team_2=df_1_3[,2])
+    
+    assignment<-rbind(assignment,assignment_bis) %>% filter(!is.na(group_team_2))
+    
+    for(i in 1:length(assignment$id)){
+        index_1<-which(rank_table$Group==assignment$group_team_1[i]&
+                           rank_table$rank==assignment$rank_team_1[i])
+        assignment$team_1[i]<-rank_table$team[index_1]
+        
+        index_2<-which(rank_table$Group==assignment$group_team_2[i]&
+                           rank_table$rank==assignment$rank_team_2[i])
+        assignment$team_2[i]<-rank_table$team[index_2]
+    }
+    return(assignment)
+}
+
+
+
+
+
 compute_table <- function(matches){
     
+    library(dplyr)
+    
+    # ==================================================
+    # MATCHES PLAYED
+    # ==================================================
+    
     played <- matches %>%
-        filter(!is.na(Score_Home),
-               !is.na(Score_Away))
+        filter(
+            !is.na(Score_Home),
+            !is.na(Score_Away)
+        )
     
     if(nrow(played) == 0){
         return(data.frame())
     }
+    
+    # ==================================================
+    # LONG FORMAT
+    # ==================================================
     
     home <- played %>%
         transmute(
@@ -52,14 +123,17 @@ compute_table <- function(matches){
             GA = Score_Home,
             Pts = case_when(
                 Score_Away > Score_Home ~ 3,
-                Score_Home == Score_Away ~ 1,
+                Score_Away == Score_Home ~ 1,
                 TRUE ~ 0
             )
         )
     
     all_matches <- bind_rows(home, away)
     
-    # ---- GLOBAL STATS ----
+    # ==================================================
+    # GLOBAL TABLE
+    # ==================================================
+    
     table_global <- all_matches %>%
         group_by(Group, team) %>%
         summarise(
@@ -71,210 +145,173 @@ compute_table <- function(matches){
             .groups = "drop"
         )
     
-    # ---- HEAD-TO-HEAD FUNCTION ----
-    h2h_rank <- function(df_group){
+    # ==================================================
+    # H2H RANKING
+    # ==================================================
+    
+    h2h_rank <- function(block){
         
-        df <- df_group
+        # ----------------------------------------------
+        # PAR DEFAUT
+        # ----------------------------------------------
         
-        # detect ties
-        df <- df %>%
-            mutate(tie_key = paste(Points, sep = "-"))
+        block <- block %>%
+            mutate(
+                Points_h2h = NA_real_,
+                GD_h2h = NA_real_,
+                GF_h2h = NA_real_
+            )
         
-        # refine ties iteratively
-        df <- df %>%
+        # ----------------------------------------------
+        # IDENTIFIER LES GROUPES D'EGALITE
+        # ----------------------------------------------
+        
+        ties <- block %>%
             group_by(Points) %>%
-            group_modify(~{
-                block <- .x
-                
-                if(nrow(block) <= 1) return(block)
-                
-                teams <- block$team
-                
-                h2h <- all_matches %>%
-                    filter(team %in% teams, opponent %in% teams) %>%
-                    group_by(team) %>%
-                    summarise(
-                        Points_h2h = sum(Pts),
-                        GD_h2h = sum(GF - GA),
-                        GF_h2h = sum(GF),
-                        .groups = "drop"
-                    )
-                
-                block %>%
-                    left_join(h2h, by = "team") %>%
-                    arrange(desc(Points_h2h),
-                            desc(GD_h2h),
-                            desc(GF_h2h))
-            }) %>%
+            filter(n() > 1) %>%
             ungroup()
         
-        block <- df %>%
-            arrange(desc(Points), desc(GD), desc(GF)) %>%
-            mutate(rank = dense_rank(order(desc(Points),
-                                           desc(Points_h2h),
-                                           desc(GD_h2h),
-                                           desc(GF_h2h)
-                                           )))
+        # ----------------------------------------------
+        # SI AUCUNE EGALITE
+        # ----------------------------------------------
         
-        block
-    }
-    
-    # ---- APPLY PER GROUP ----
-    table_global<-table_global %>%
-        group_by(Group) %>%
-        group_modify(~h2h_rank(.x)) %>%
-        ungroup() %>%
-        arrange(Group, rank) %>% 
-        mutate(across(where(is.numeric), as.integer))
-    
-    
-    
-    thirds <- table_global %>%
-        filter(rank == 3) %>%
-        arrange(desc(Points), desc(GD), desc(GF)) %>%
-        mutate(rank_third = row_number())
-    
-    table_global <- table_global %>%
-        left_join(thirds %>% select(team, rank_third), by = "team")
-    
-    table_global <- table_global %>%
-        mutate(Qualified = (rank<=2)|(rank==3&rank_third<=8))
-    
-    return(table_global)
-}
-
-
-compute_table <- function(matches){
-    
-    library(dplyr)
-    
-    played <- matches %>%
-        filter(!is.na(Score_Home),
-               !is.na(Score_Away))
-    
-    if(nrow(played) == 0){
-        return(data.frame())
-    }
-    
-    home <- played %>%
-        transmute(
-            Group = Group,
-            team = home,
-            opponent = away,
-            GF = Score_Home,
-            GA = Score_Away,
-            Pts = case_when(
-                Score_Home > Score_Away ~ 3,
-                Score_Home == Score_Away ~ 1,
-                TRUE ~ 0
-            )
-        )
-    
-    away <- played %>%
-        transmute(
-            Group = Group,
-            team = away,
-            opponent = home,
-            GF = Score_Away,
-            GA = Score_Home,
-            Pts = case_when(
-                Score_Away > Score_Home ~ 3,
-                Score_Home == Score_Away ~ 1,
-                TRUE ~ 0
-            )
-        )
-    
-    all_matches <- bind_rows(home, away)
-    
-    # ---- GLOBAL STATS ----
-    table_global <- all_matches %>%
-        group_by(Group, team) %>%
-        summarise(
-            Points = sum(Pts, na.rm = TRUE),
-            Match = n(),
-            GF = sum(GF, na.rm = TRUE),
-            GA = sum(GA, na.rm = TRUE),
-            GD = GF - GA,
-            .groups = "drop"
-        )
-    
-    # ---- H2H SAFE RANKING ----
-    h2h_rank <- function(df_group){
-        
-        df_group %>%
-            group_modify(~{
-                
-                block <- .x
-                
-                # sécurité : toujours avoir Points
-                if(!"Points" %in% names(block)){
-                    block$Points <- 0
-                }
-                
-                # PAS DE TIE → ranking direct
-                if(nrow(block) <= 1){
-                    return(block %>%
-                               mutate(
-                                   Points_h2h = Points,
-                                   GD_h2h = GD,
-                                   GF_h2h = GF,
-                                   rank = 1
-                               ))
-                }
-                
-                teams <- block$team
-                
-                h2h <- all_matches %>%
-                    filter(team %in% teams,
-                           opponent %in% teams) %>%
-                    group_by(team) %>%
-                    summarise(
-                        Points_h2h = sum(Pts, na.rm = TRUE),
-                        GD_h2h = sum(GF - GA, na.rm = TRUE),
-                        GF_h2h = sum(GF, na.rm = TRUE),
-                        .groups = "drop"
-                    )
-                
+        if(nrow(ties) == 0){
+            
+            return(
                 block %>%
-                    left_join(h2h, by = "team") %>%
-                    
-                    # fallback si NA
-                    mutate(
-                        Points_h2h = ifelse(is.na(Points_h2h), Points, Points_h2h),
-                        GD_h2h = ifelse(is.na(GD_h2h), GD, GD_h2h),
-                        GF_h2h = ifelse(is.na(GF_h2h), GF, GF_h2h)
+                    arrange(
+                        desc(Points),
+                        desc(GD),
+                        desc(GF)
                     ) %>%
-                    
-                    arrange(desc(Points),
-                            desc(Points_h2h),
-                            desc(GD_h2h),
-                            desc(GF_h2h)) %>%
-                    
                     mutate(rank = row_number())
-            }) %>%
-            ungroup()
+            )
+        }
+        
+        # ----------------------------------------------
+        # CALCUL H2H POUR CHAQUE BLOC D'EGALITE
+        # ----------------------------------------------
+        
+        tie_levels <- unique(ties$Points)
+        
+        for(p in tie_levels){
+            
+            tied_teams <- block %>%
+                filter(Points == p) %>%
+                pull(team)
+            
+            h2h <- all_matches %>%
+                filter(
+                    team %in% tied_teams,
+                    opponent %in% tied_teams
+                ) %>%
+                group_by(team) %>%
+                summarise(
+                    Points_h2h = sum(Pts),
+                    GD_h2h = sum(GF - GA),
+                    GF_h2h = sum(GF),
+                    .groups = "drop"
+                )
+            
+            block <- block %>%
+                left_join(
+                    h2h,
+                    by = "team",
+                    suffix = c("", "_new")
+                ) %>%
+                mutate(
+                    Points_h2h = coalesce(
+                        Points_h2h_new,
+                        Points_h2h
+                    ),
+                    GD_h2h = coalesce(
+                        GD_h2h_new,
+                        GD_h2h
+                    ),
+                    GF_h2h = coalesce(
+                        GF_h2h_new,
+                        GF_h2h
+                    )
+                ) %>%
+                select(
+                    -ends_with("_new")
+                )
+        }
+        
+        # ----------------------------------------------
+        # FALLBACK
+        # ----------------------------------------------
+        
+        block <- block %>%
+            mutate(
+                Points_h2h = coalesce(Points_h2h, 0),
+                GD_h2h = coalesce(GD_h2h, 0),
+                GF_h2h = coalesce(GF_h2h, 0)
+            )
+        
+        # ----------------------------------------------
+        # FINAL RANKING
+        # ----------------------------------------------
+        
+        block %>%
+            arrange(
+                desc(Points),
+                desc(Points_h2h),
+                desc(GD_h2h),
+                desc(GF_h2h),
+                desc(GD),
+                desc(GF)
+            ) %>%
+            mutate(rank = row_number())
     }
     
-    # ---- APPLY PER GROUP ----
+    # ==================================================
+    # APPLY GROUP BY GROUP
+    # ==================================================
+    
     table_global <- table_global %>%
         group_by(Group) %>%
-        group_modify(~h2h_rank(.x)) %>%
+        group_modify(~ h2h_rank(.x)) %>%
         ungroup() %>%
-        arrange(Group, rank)%>% 
-        mutate(across(where(is.numeric), as.integer))
+        arrange(Group, rank)
     
-    # ---- BEST 3 ----
+    # ==================================================
+    # BEST 3RD PLACES
+    # ==================================================
+    
     thirds <- table_global %>%
         filter(rank == 3) %>%
-        arrange(desc(Points), desc(GD), desc(GF)) %>%
+        arrange(
+            desc(Points),
+            desc(GD),
+            desc(GF)
+        ) %>%
         mutate(rank_third = row_number())
     
+    # ==================================================
+    # QUALIFICATION
+    # ==================================================
+    
     table_global <- table_global %>%
-        left_join(thirds %>% select(team, rank_third), by = "team") %>%
+        left_join(
+            thirds %>%
+                select(team, rank_third),
+            by = "team"
+        ) %>%
         mutate(
-            Qualified = (rank <= 2) | (rank == 3 & rank_third <= 8)
-        )%>% 
-        mutate(across(where(is.numeric), as.integer))
+            Qualified =
+                (rank <= 2) |
+                (rank == 3 & rank_third <= 8),
+            
+            Qualification = ifelse(
+                Qualified,
+                "🟢 Qualified",
+                "🔴 Eliminated"
+            )
+        ) %>%
+        mutate(
+            across(where(is.numeric), as.integer)
+        )
     
     return(table_global)
 }
@@ -286,9 +323,11 @@ get_qualified_3_vec<-function(table_global){
 }
 
 
-matches<-scores
-test<-compute_table(matches)
-get_qualified_3_vec(test)
+# matches<-scores
+# test<-compute_table(matches)
+
+
+#get_qualified_3_vec(test)
 
 # ---------------------------------
 # SIMULATION

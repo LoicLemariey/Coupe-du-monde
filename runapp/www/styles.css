@@ -1,0 +1,62 @@
+/* -----------------------------
+   RANKING TABLE STYLE
+------------------------------ */
+
+.shiny-file-input-progress {
+    display: none;
+  }
+
+.ranking_table table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+/* Header */
+.ranking_table th {
+    background-color: royalblue;
+    font-weight: 600;
+    padding: 6px;
+    text-align: center;
+}
+
+/* Cells */
+.ranking_table td {
+    padding: 6px;
+    text-align: center;
+}
+
+/* Column sizing */
+.ranking_table th:nth-child(1),
+.ranking_table td:nth-child(1) {
+    width: 60px;
+}
+
+.ranking_table th:nth-child(2),
+.ranking_table td:nth-child(2) {
+    width: 140px;
+    text-align: left;
+}
+
+.ranking_table th:nth-child(3),
+.ranking_table td:nth-child(3) {
+    width: 140px;
+}
+
+.ranking_table th:nth-child(4),
+.ranking_table td:nth-child(4) {
+    width: 100px;
+}
+
+/* Optional hover */
+.ranking_table tr:hover {
+    background-color: #fafafa;
+}
+
+
+
+
+
+
+

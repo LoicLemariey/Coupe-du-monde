@@ -6,7 +6,7 @@ library(httr)
 library(dplyr)
 library(stringr)
 library(readxl)
-setwd("~/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coude_du_monde_2026")
+setwd("~/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coupe_du_monde_2026")
 rm(list=ls())
 
 
