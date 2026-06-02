@@ -6,6 +6,7 @@ server <- function(input, output, session){
     refresh<-reactiveVal(0)
     third_qualified<-reactiveVal()
     round32<-reactiveVal()
+    tournament<-reactiveVal(tournament)
     
     
     observeEvent(matches(), {
@@ -190,9 +191,12 @@ server <- function(input, output, session){
     #--building round32table from rank
     observe({
         req(rank_table())
-        round32(compute_assignment(assignment,third_qualified(),rank_table()) %>% arrange(id_2))
-
-    print(round32())
+        round32(compute_assignment(assignment,third_qualified(),rank_table()))
+        tournament(rbind(round32(),tournament() %>% filter(Match_type!="Round of 32"))
+                   )
+# library(writexl)
+#         write_xlsx(tournament(),"mon_tournoi.xlsx")
+    #View(tournament())
     })
     
     # -------------------------------------------------------

@@ -15,6 +15,11 @@ assignment$R4<-rep(1:2,each=8)#demi
 
 lettres <- LETTERS[1:12]  # A à L
 
+count_letter<-function(vec, letter){
+    return(sum(vec==letter))
+}
+
+
 resultat <- sapply(lettres, function(l) {
     apply(annexe, 2, count_letter, letter = l)
 })
@@ -74,3 +79,4 @@ possible_adversaire_group<-sapply(lettres_par_colonne,paste,collapse="/")
 third<-data.frame(Group=all_groups,
                   Possible_oponnent=possible_adversaire_group,
                   next_match_same_group=Group_rencontre)
+

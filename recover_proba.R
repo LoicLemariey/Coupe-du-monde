@@ -6,6 +6,12 @@ library(httr)
 library(dplyr)
 library(stringr)
 library(readxl)
+library(rvest)
+library(readr)
+library(rvest)
+library(xml2)
+library(dplyr)
+library(purrr)
 setwd("~/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coupe_du_monde_2026")
 rm(list=ls())
 
@@ -13,14 +19,29 @@ rm(list=ls())
 
 scores<-read_xlsx("runapp/www/scores.xlsx")
 
+
+#translate team score
+countries<-read_xlsx("runapp/www/countries.xlsx")
+scores2<-merge(scores,countries[,1:2],by.x="home",by.y="Team_Fr")
+scores2<-merge(scores2,countries[,1:2],by.x="away",by.y="Team_Fr")
+names(scores2)<-c("away_fr","home_fr","Group","Score_Home","Score_Away","match_id","home","away")
+scores2<-scores2 %>% select(Group,match_id,home,Score_Home,Score_Away,away)
+write_xlsx(scores2,"runapp/www/scores.xlsx")
+
+
+
+
+
+
 match_ids<-scores$match_id[is.na(scores$Score_Home)]
-
-
 
 
 url1<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66456904?T=exp=1779959808~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=8f45fb6ece1746b05544fc0bd9751ffc61340d74dd2e2e7e34345312d6ad759f"
 url2<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66456904?T=exp=1779951168~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=37902744ac124612db7c35368bbf7eb7df78c47acc15cce9a507cc2aa13d7acf"
+#pour recuperer les ids des matches fifa
 url3<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_info/66456904?T=exp=1779968448~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=1aad6e03f16d52a3f0c6a895c6073a6bbb2f358853945d033de2958ea11ed909"
+
+
 
 n_match<-6*12
 
@@ -133,3 +154,60 @@ res$list_proba_score[[match_ids[3]]]
 list<-res$list_proba_score
 
 save(list,file=paste0(Sys.Date(),"Proba_list.Rdata"))
+
+
+
+
+#-----------recover elo----------------------------------
+
+
+#ou a partir url
+
+url_elo<-'https://www.eloratings.net/World.tsv?_=1780235318230'
+res_elo <- GET(url_elo, add_headers(
+    `User-Agent` = "Mozilla/5.0",
+    `Referer` = "https://www.winamax.fr/",
+    `Accept` = "application/json"
+))
+content_text_elo <- content(res, as = "text", encoding = "UTF-8")
+
+
+df_elo <- read_tsv(url_elo, col_names = FALSE) %>% mutate(id_iso = X3,
+                                                      Elo = X4) %>% 
+    select(id_iso,Elo)
+
+coutries<-read_xlsx("runapp/www/countries.xlsx")
+df_elo_world_cup<-merge(coutries,df_elo)
+write_xlsx(df_elo_world_cup,paste0(Sys.Date(),"elo.xlsx"))
+
+
+# soit un fichier local html (plus le dossier)
+doc <- read_html("World Football Elo Ratings.html")
+rows <- html_elements(doc, "div.slick-row")
+elo_df <- map_dfr(rows, function(x) {
+    
+    cells <- html_elements(x, ".slick-cell") |>
+        html_text2()
+    
+    # adapter selon le nombre de colonnes
+    if(length(cells) >= 3) {
+        tibble(
+            rank   = cells[1],
+            team   = cells[2],
+            rating = cells[3]
+        )
+    }
+})
+
+elo_df <- elo_df |>
+    mutate(
+        rank = as.integer(rank),
+        rating = as.numeric(rating)
+    )
+
+
+#ou a partir du fichier excel
+
+
+
+
