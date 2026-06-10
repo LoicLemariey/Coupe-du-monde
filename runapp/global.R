@@ -23,7 +23,7 @@ source("config.R")
 source("tab_ui.R")
 options(warn = -1)
 
-plan(multisession, workers = min(availableCores() - 1))
+#plan(multisession, workers = min(availableCores() - 1))
 # handlers("txtprogressbar")
 
 tournament<-read_xlsx("www/round32assignment.xlsx")
