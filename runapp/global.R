@@ -9,17 +9,42 @@ library(tidyr)
 library(shinyjs)
 library(rhandsontable)
 library(stringr)
-# ---------------------------------
-# PARAMETRES
-# ---------------------------------
+library(scales)
+library(ggplot2)
+library(future)
+library(furrr)
+library(future.apply)
+#library(progressr)
 
 
-rm(list=(ls()))
-N_SIM <- 100
-tab_names <- c("A","B","C","D","E","F","G","H","I","J","K","L")
+#------------------parameters-------------
 
-#scores<-read_xlsx("runapp/www/scores.xlsx")
+source("config.R")
+source("tab_ui.R")
+options(warn = -1)
 
+plan(multisession, workers = min(availableCores() - 1))
+handlers("txtprogressbar")
+
+tournament<-read_xlsx("www/round32assignment.xlsx")
+levels_r32<-paste0("n°",tournament$ID[1:16]," ",
+                   tournament$rank_team_1[1:16],
+                   tournament$group_team_1[1:16],
+                   " vs ",
+                   tournament$rank_team_2[1:16],
+                   tournament$group_team_2[1:16])
+levels_r32<-str_replace(levels_r32,"NA","")
+
+
+assignment<-tournament %>% filter(Match_type=="Round of 32")
+annexe <- read.csv(
+    "www/third.txt",
+    sep = ";",
+    header = TRUE,
+    stringsAsFactors = FALSE
+)[,-1]
+load("www/Proba_list.Rdata")
+elo<-read_xlsx("www/elo.xlsx")
 
 
 
@@ -30,14 +55,7 @@ renderer_lock<- "function(instance, td) {
                 }
             "
 
-tournament<-read_xlsx("www/round32assignment.xlsx")
-assignment<-tournament %>% filter(Match_type=="Round of 32")
-annexe <- read.csv(
-    "www/third.txt",
-    sep = ";",
-    header = TRUE,
-    stringsAsFactors = FALSE
-)[,-1]
+
 
 
 
@@ -49,12 +67,10 @@ annexe$combination <- apply(annexe, 1, function(x) {
 })
 
 
-# ---------------------------------
-# CLASSEMENT
-# ---------------------------------
+#---------classement-----------
 
 
-
+#a debugegr quand le score est vide.
 compute_assignment<-function(assignment,third_qualified,rank_table){
     index<-which(annexe$combination==third_qualified)
     third<-t(annexe[index,-dim(annexe)[2]])
@@ -84,9 +100,6 @@ compute_assignment<-function(assignment,third_qualified,rank_table){
 }
 
 
-
-
-
 compute_table <- function(matches){
     
 
@@ -95,9 +108,9 @@ compute_table <- function(matches){
         matches %>% select(Group, team = away)
     ) %>%
         distinct()
-    # ==================================================
+
     # MATCHES PLAYED
-    # ==================================================
+
     
     played <- matches %>%
         filter(
@@ -109,9 +122,9 @@ compute_table <- function(matches){
         return(data.frame())
     }
     
-    # ==================================================
+
     # LONG FORMAT
-    # ==================================================
+
     
     home <- played %>%
         transmute(
@@ -341,7 +354,6 @@ compute_table <- function(matches){
     return(table_global)
 }
 
-
 get_qualified_3_vec<-function(table_global){
     vec<-sort(table_global$Group[table_global$rank==3&table_global$Qualified])
     return(vec)
@@ -350,8 +362,6 @@ get_qualified_3_vec<-function(table_global){
 
 # -----------------------Simulation---------------------------------------------
 
-load("www/Proba_list.Rdata")
-elo<-read_xlsx("www/elo.xlsx")
 
 
 
@@ -543,27 +553,7 @@ simulate_round<-function(tournament,elo_df,round,next_round){
 
 
 
-get_place<-function(team,finish_tournament){
-    index<-which(finish_tournament$Loser==team)
-    result<-character()
-    if(length(index)==0){
-        if(team==finish_tournament$Winner[finish_tournament$Match_type=="Final"]){
-            result<-"🏆 Winner"
-        }else{
-            result<-"Group stage"
-        }
-    }
-    else if(length(index)==2){
-        result<-"🥉 Third"
-    }else{
-        result<-finish_tournament$Match_type[index]
-        if(result=="Final"){
-            result<-"🥈 Second"
-        }
-    }
-    return(result)
-    
-}
+
 
 
 simulate_all_round<-function(tournament,elo_df){
@@ -576,54 +566,37 @@ simulate_all_round<-function(tournament,elo_df){
 }
 
 
-get_path<-function(finish_tournament,team){
-
-    index<-which((finish_tournament$team_1==team|finish_tournament$team_2==team)&finish_tournament$Match_type=="Round of 32")
-    path<-character(5)
+get_place<-function(team,finish_tournament){
+    index<-which(finish_tournament$Loser==team)
+    result<-character()
     if(length(index)==0){
-        return(NA)
+        if(team==finish_tournament$Winner[finish_tournament$Match_type=="Final"]){
+            result<-"🏆 Winner"
+        }else{
+            result<-"Group stage"
+        }
+    }else if(length(index)==2){
+        result<-"🥉 Third"
+    }else{
+        result<-finish_tournament$Match_type[index]
+        if(result=="Final"){
+            result<-"🥈 Second"
+        }
     }
-
-    
-    r32<-c(finish_tournament$team_1[index],finish_tournament$team_2[index])
-    path[1]<-r32[which(r32!=team)]
-    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
-    path[2]<-finish_tournament$Winner[nxt_round_idx]
     
     
-    index<-which((finish_tournament$team_1==path[2]|finish_tournament$team_2==path[2])&finish_tournament$Match_type=="Round of 16")
-    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
-    path[3]<-finish_tournament$Winner[nxt_round_idx]
+    levels<-rev(c("Group stage","Round of 32","Round of 16",
+              "Quarter","Semi","🥉 Third","🥈 Second","🏆 Winner"))
+    labels <- rev(c("Group stage", "Round of 32", "Round of 16",
+                "Quarter", "Semi", "🥉 Third", "🥈 Second", "🏆 Winner"))
+    result<-factor(result,levels,labels = labels)
+    return(result)
     
-    index<-which((finish_tournament$team_1==path[3]|finish_tournament$team_2==path[3])&finish_tournament$Match_type=="Quarter")
-    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
-    path[4]<-finish_tournament$Winner[nxt_round_idx]
-    
-    index<-which((finish_tournament$team_1==path[4]|finish_tournament$team_2==path[4])&finish_tournament$Match_type=="Semi")
-    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
-    path[5]<-finish_tournament$Winner[nxt_round_idx]
-
-    return(path)
 }
 
 
-# get_path(finish_tournament,"fr")
-# get_path(finish_tournament,"France")
-# get_path(finish_tournament,"Argentina")
-# 
-# get_place(finish_tournament = finish_tournament,"Switzerland")
-# get_place(finish_tournament = finish_tournament,"Argentina")
-# get_place(finish_tournament = finish_tournament,"Germany")
-# 
 
 
-
-# test_phase<-simulate_groups_phase(scores,elo)
-# (test_rank<-compute_table(test_phase$scores_out) %>% filter(Group=="I"))
-# View(test_phase$elo_df)
-# simulate_elo_matcsimulate_elo_matcsimulate_elo_match(df_elo_world_cup,"Spain","France")
-# simulate_elo_match_score(df_elo_world_cup,"Spain","France")
-# elo2<-update_elo("France","Argentina",3,0,elo)
 
 
 
@@ -646,26 +619,13 @@ one_simulation<-function(scores,assignment,tournament,elo_df){
 }
 
 
-test<-one_simulation(scores,assignment,tournament,elo)
-print(test$rank_table$rank[test$rank_table$team=="France"])
-get_path(test$tournament,"France")
-test$elo$Elo[test$elo$Team_En=="France"]
-View(test$tournament)
-
-N_simu<-100
-t1<-Sys.time()
-results <- lapply(
-    seq_len(N_simu),
-    function(i) one_simulation(scores, assignment, tournament, elo)
-)
-t2<-Sys.time()
-difftime(t2,t1)
-#100=30s
-
-
 get_all_rank<-function(rank_table,team){
     index<-rank_table$rank_table$team==team
-    out<-paste(rank_table$rank_table$rank[index],rank_table$rank_table$Qualification[index],sep=": ")
+    out<-paste(rank_table$rank_table$rank[index],
+               rank_table$rank_table$Qualification[index],
+               sep=": ")
+    levels<-paste(c(1,2,3,3,4),c(rep("\U0001f7e2 Qualified",each=3),rep("\U0001f534 Eliminated",2)),sep=": ")
+    out<-factor(out,levels)
     return(out)
 }
 
@@ -686,47 +646,333 @@ get_all_r32<-function(one_simu,team){
     group<-paste(one_simu$rank_table$Group[index])
     
     out<-"Not Qualified"
+    tournament<-tournament[1:16,]
+    tournament$group_team_2[is.na(tournament$group_team_2)]<-""
+    levels<-levels_r32
+    levels<-c(levels,out)
+    out<-factor(out,level=levels)
+    
     if(bool_t1|bool_t2){
         if(bool_t1){
             out<-one_simu$tournament$Match[index_t1]
+            out<-factor(levels[index_t1],level=levels)
         }
         
         if(bool_t2){
             out<-one_simu$tournament$Match[index_t2]
+            out<-factor(levels[index_t2],level=levels)
         }
-       
-        out<-paste0(group,rank," ",out)
+        
+        # if(rank!=3){
+        #     out<-paste0(rank,group," n°",out)
+        # }else{
+        #     out<-paste0(rank," n°",out)
+        # }
+        
     }
-    return(out) 
 
+    return(out) 
+    
 }
 
 
+get_path<-function(finish_tournament,team){
+    
+    index<-which((finish_tournament$team_1==team|finish_tournament$team_2==team)&finish_tournament$Match_type=="Round of 32")
+    path<-character(5)
+    if(length(index)==0){
+        return(NA)
+    }
+    
+    
+    r32<-c(finish_tournament$team_1[index],finish_tournament$team_2[index])
+    path[1]<-r32[which(r32!=team)]
+    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
+    path[2]<-finish_tournament$Winner[nxt_round_idx]
+    
+    
+    index<-which((finish_tournament$team_1==path[2]|finish_tournament$team_2==path[2])&finish_tournament$Match_type=="Round of 16")
+    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
+    path[3]<-finish_tournament$Winner[nxt_round_idx]
+    
+    index<-which((finish_tournament$team_1==path[3]|finish_tournament$team_2==path[3])&finish_tournament$Match_type=="Quarter")
+    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
+    path[4]<-finish_tournament$Winner[nxt_round_idx]
+    
+    index<-which((finish_tournament$team_1==path[4]|finish_tournament$team_2==path[4])&finish_tournament$Match_type=="Semi")
+    nxt_round_idx<-which(finish_tournament$Next_opponent==finish_tournament$Match[index])
+    path[5]<-finish_tournament$Winner[nxt_round_idx]
+    
+    return(path)
+}
 
 get_all_path<-function(one_simu,team){
     return(get_path(one_simu$tournament,team))
 }
 
-t_rank<-sapply(results,get_all_rank,"France")
-table(t_rank)
-#defini lesvels
-
-t<-sapply(results,get_all_results,"England")
-table(t)
-#levels
-
-t<-sapply(results,get_all_r32,"Morocco")
-prop.table(table(t)[names(table(t)!="Not Qualified")])
-#il faut affciher les cas ou il y a 0
 
 
-t<-sapply(results,get_all_path,"France")
-t_clean<-t[!is.na(t)]
-t_clean[[1]]
-mat<-matrix(unlist(t_clean),ncol=5,byrow = T)
 
 
-opponent_round<-apply(mat,2,table)
-opponent_round<-lapply(opponent_round,sort,decreasing =TRUE)
-names(opponent_round)<-c("r32","r16","Quarter","Semi","Final")
-opponent_round
+
+
+
+
+
+build_result_graph<-function(results,team){
+    
+    x<-sapply(results,get_all_results,team)
+    
+    df <- tibble(modalite = x) |>
+        count(modalite) |>
+        mutate(
+            prop = n / sum(n),
+            label = paste0(modalite, "\n", round(100 * prop, 1), "%")
+        )
+    cols <- setNames(
+        rev(c(
+            "#B2182B",
+            "#D6604D",
+            "#F4A582",
+            "#FDDBC7",
+            "#D1E5F0",
+            "#92C5DE",
+            "#4393C3",
+            "#2166AC"
+        )),
+        levels(x)
+    )
+    
+    
+    ggplot(df, aes(y = "", x = prop, fill = modalite)) +
+        geom_col(width = 0.8) +
+        geom_text(
+            aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 4
+        ) +
+        scale_x_continuous(labels = percent_format()) +
+        labs(x = NULL, y = NULL, fill = NULL) +
+        scale_fill_manual(values = cols) +
+        theme_minimal() +
+        theme(
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            panel.grid.major.y = element_blank()
+        ) + theme(legend.position = "left")
+}
+
+draw_r32_graph<-function(results,team){
+    x<-rev(sapply(results,get_all_r32,team))
+    df <- tibble(modalite = x) |>
+        count(modalite, .drop = FALSE) |>
+        mutate(prop = n / sum(n))
+    df$modalite <- factor(df$modalite, levels = rev(unique(df$modalite)))
+    ggplot(df, aes(x = prop, y = modalite)) +
+        geom_col(fill="royalblue") +
+        scale_x_continuous(
+            labels = percent_format(accuracy = 1),
+            limits = c(0, 1)
+        ) +
+        geom_text(
+            aes(label = scales::percent(prop, accuracy = 1)),
+            hjust = -0.1,
+            size = 4
+        ) +
+        labs(x = NULL, y = NULL) +
+        geom_hline(yintercept = 4.5, linetype = "dotted")+
+        geom_hline(yintercept = 12.5, linetype = "dotted")+
+        geom_hline(yintercept = 8.5, linetype = "dashed")+theme_minimal()
+    
+}
+
+draw_rank_graph<-function(results,team){
+    x<-sapply(results,get_all_rank,team)
+    df <- tibble(modalite = x) |>
+        count(modalite, .drop = FALSE) |>
+        mutate(prop = n / sum(n))
+    df$modalite <- factor(df$modalite, levels = rev(unique(df$modalite)))
+    ggplot(df, aes(x = prop, y = modalite)) +
+        geom_col(fill=c(rep("forestgreen",3),rep("firebrick",2))) +
+        scale_x_continuous(
+            labels = percent_format(accuracy = 1),
+            limits = c(0, 1)
+        ) +
+        geom_text(
+            aes(label = scales::percent(prop, accuracy = 1)),
+            hjust = -0.1,
+            size = 4
+        ) +
+        labs(x = NULL, y = NULL) +
+        theme_minimal()
+    
+}
+
+
+# --------------------------test------------------------------------------------
+
+# 
+# test<-one_simulation(scores,assignment,tournament,elo)
+# print(test$rank_table$rank[test$rank_table$team=="France"])
+# get_path(test$tournament,"France")
+# test$elo$Elo[test$elo$Team_En=="France"]
+# View(test$tournament)
+# 
+# N_simu<-200
+# t1<-Sys.time()
+# results <- lapply(
+#     seq_len(N_simu),
+#     function(i) one_simulation(scores, assignment, tournament, elo)
+# )
+# t2<-Sys.time()
+# difftime(t2,t1)
+# #100=30s
+# 
+# 
+# 
+# 
+# 
+# 
+# build_result_graph(results,"Japan")
+# draw_r32_graph(results,"Japan")
+# draw_rank_graph(results,"Japan")
+
+
+
+
+#-------------path----------------------------------------
+# 
+
+
+draw_path<-function(results,team){
+    #print("ENTER drawpath")
+    
+
+    t<-sapply(results,get_all_path,team,simplify = FALSE)
+    #print(paste0("type t",typeof(t)))
+    t_clean<-t[!is.na(t)]
+    mat<-matrix(unlist(t_clean),ncol=5,byrow = T)
+    #opponent_round<-apply(mat,2,table)
+    opponent_round <- lapply(
+        seq_len(ncol(mat)),
+        function(i) table(mat[, i, drop = TRUE])
+    )
+    opponent_round<-sapply(opponent_round,sort,decreasing =TRUE,simplify = FALSE)
+    
+    
+    names(opponent_round)<-c("r32","r16","Quarter","Semi","Final")
+    
+    
+
+    # trier par frequence
+    #code couleur
+    df <- purrr::imap_dfr(
+        opponent_round,
+        ~ tibble(
+            round = .y,
+            opponent = names(.x),
+            n = as.numeric(.x)
+        ))
+
+    
+    df<-df|>
+        group_by(round) |>
+        mutate(
+            prop = n / sum(n)
+        )
+    
+    
+
+    df<-df|>
+        ungroup() |>
+        mutate(
+            opponent = ifelse(prop < prct_minimal, "OTHER", opponent)
+        ) |>
+        group_by(round, opponent) |>
+        summarise(n = sum(n), .groups = "drop") |>
+        group_by(round) |>
+        mutate(prop = n / sum(n),
+               label = paste0(opponent," ",round(100 * prop, 1), "%")) |>
+        ungroup()
+    
+    
+    
+    
+    df$round <- factor(
+        df$round,
+        levels = c("r32", "r16", "Quarter", "Semi", "Final")
+    )
+    
+    
+    
+    p1<-ggplot(df, aes(x = round, y = prop, fill = opponent)) +
+        geom_col(width = 0.8) +
+        geom_text(
+            aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3,
+            check_overlap = TRUE
+        ) +
+        scale_y_continuous(labels = percent_format()) +
+        labs(
+            x = NULL,
+            y = "Probability",
+            fill = "Opponent"
+        ) +
+        theme_minimal()+
+        scale_fill_manual(values = team_colors)
+    
+    return(p1)
+}
+
+
+
+# filter------------------------------------------------------------------------
+
+filter_result<-function(result,team,rank="All",r32="All"){
+    bool_r32<-TRUE
+    bool_rank<-TRUE
+    id_team<-which(result$rank_table$team==team)
+    #print(names(result$rank_table))
+    if(rank!="All"){
+        bool_rank<-result$rank_table$rank[id_team]==rank
+    }
+    if(r32!="All"& r32!="NA"){
+        
+        nr32<-which(levels_r32==r32)
+        bool_r32<-result$tournament$team_1[nr32]==team|
+            result$tournament$team_2[nr32]==team
+    }
+    if(r32=="NA"){
+        bool_r32<-FALSE
+    }
+    if(rank==4){
+        bool_r32<-TRUE
+    }
+    # print("bool rank")
+    # print(bool_rank)
+    out<-bool_rank&bool_r32
+    return(out)
+    
+}
+
+get_r32_after_filter<-function(result,team,rank){
+    t<-lapply(result,filter_result,team, rank=rank,r32="All")
+    index<-which(unlist(t))
+    r32<-unique(rev(sapply(result[index],get_all_r32,team)))
+    index_not<-which(r32=="Not Qualified")
+    if(length(index_not)>0){
+        r32<-r32[-index_not]
+    }
+
+    if(length(r32)==0){
+        r32<-c("NA")
+    }else{
+        r32<-c("All",as.character(as.vector(r32)))
+    }
+    
+    # print(typeof(r32))
+    # print(paste(r32))
+    return(r32)
+}
+

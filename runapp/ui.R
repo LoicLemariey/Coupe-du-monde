@@ -1,44 +1,5 @@
 #ui
 
-tabs <- lapply(tab_names, function(m) {
-    tabPanel(
-        title = m,
-        br(),
-        
-
-        
-        
-        div(class = "group",
-            style = "
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        align-items: flex-start;
-    ",
-            
-            div(
-                style = "
-            width: 700px;
-            overflow-x: hidden;
-        ",
-                h5("Matches:"),
-                rHandsontableOutput(paste0("table_", m))
-            ),
-            
-            div(
-                style = "
-            width: 1000px;
-            overflow-x: hidden;
-        ",
-                h5("Ranking Table:"),
-                tableOutput(paste0("tab_", m))
-            )
-        )
-        
-        
-        
-    )
-})
 
 
 ui <- page_navbar(
@@ -216,14 +177,34 @@ $(document).on('shiny:value shiny:recalculated', function(){
     
 #------------SIMULATIONS--------------------------------------------------------
     
+
     nav_panel(
         "Qualifications Simulations",
         h5("Qualification and future opponents probability based on scores simulations (Monte Carlo Estimation)"),
-        card(
-            
-            card_header("Probabilités de victoire"),
-            
-            tableOutput("simulations")
-        )
+        actionButton("btn_simulation","Simulate"),
+            h4("Group stage results"),
+            selectInput(inputId="list_team",
+                        label = "Team",
+                        choices = sort(all_teams$team)),
+            fluidRow(
+                column(6,plotOutput("plot_rank_group",height = "250px")),
+                column(6,plotOutput("plot_r32",height = "250px"))
+            ),
+
+        fluidRow(
+            column(2,selectInput(inputId="list_rank",
+                                 label = "Group Rank",
+                                 choices = c("All",1,2,3,4),
+                                 selected = "All")),
+            column(3,selectInput(inputId="list_r32",
+                                 label = "Round of 32",
+                                 choices = c("All",levels_r32),
+                                 selected = "All"))
+        ),
+        br(),
+        h4("Results"),
+        div(plotOutput("plot_final_result",height="100px")),
+        h4("Future possible opponents at each round"),
+        div(plotOutput("plot_path",height="500px"))
     )
 )

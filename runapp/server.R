@@ -7,7 +7,20 @@ server <- function(input, output, session){
     third_qualified<-reactiveVal()
     round32<-reactiveVal()
     tournament<-reactiveVal(tournament)
+    simulation_res<-reactiveVal()
+    simulation_res_filtered<-reactiveVal()
     
+    team_filter<-reactiveVal()
+    rank_filter<-reactiveVal()
+    r32_filter<-reactiveVal()
+    display_res<-reactiveVal()
+    
+    graph_result<-reactiveVal()
+    graph_path<-reactiveVal()
+    
+    observe(team_filter(input$list_team))
+    observe(rank_filter(input$list_rank))
+    observe(r32_filter(input$list_r32))
     
     observeEvent(matches(), {
         req(matches())
@@ -176,7 +189,7 @@ server <- function(input, output, session){
     
     
     
-    #------Round32-------------------------
+    ## ------Round32-------------------------
     
     
     
@@ -199,9 +212,9 @@ server <- function(input, output, session){
     #View(tournament())
     })
     
-    # -------------------------------------------------------
-    # ROUND OF 16 WINNERS
-    # -------------------------------------------------------
+
+    ## ------ROUND OF 16 WINNERS----------
+
     
     winners_r32 <- reactive({
         sapply(1:nrow(round32()), function(i){
@@ -218,10 +231,9 @@ server <- function(input, output, session){
             if (is.null(val) || val == "") "TBD" else val
         })
     })
-    
-    # -------------------------------------------------------
+
     # QUARTER WINNERS
-    # -------------------------------------------------------
+
     
     winners_quarter <- reactive({
         sapply(1:4, function(i){
@@ -229,10 +241,8 @@ server <- function(input, output, session){
             if (is.null(val) || val == "") "TBD" else val
         })
     })
-    
-    # -------------------------------------------------------
+ 
     # SEMI WINNERS
-    # -------------------------------------------------------
     
     winners_semi <- reactive({
         sapply(1:2, function(i){
@@ -241,9 +251,8 @@ server <- function(input, output, session){
         })
     })
     
-    # -------------------------------------------------------
     # FINAL WINNER
-    # -------------------------------------------------------
+   
     
     winner_final <- reactive({
         val <- input[[paste0("f")]]
@@ -390,26 +399,138 @@ server <- function(input, output, session){
     
 #--------Simulations------------------------------------------------------------
     
-    output$simulations <- renderTable({
-        
-        req(matches())
-        
-        df <- matches()
-        
-        complete <- all(
-            !is.na(df$Score_Home) &
-                !is.na(df$Score_Away)
-        )
-        
-        if(complete){
-            
-            return(
-                data.frame(
-                    Info = "Tous les matchs sont complétés"
+    ## --------------Compute out-------
+    
+    # observeEvent(input$btn_simulation, {
+    #     results <- lapply(
+    #         seq_len(N_SIM),
+    #         function(i) one_simulation(matches(),
+    #                                    assignment,
+    #                                    tournament(),
+    #                                    elo)
+    #     )
+    #     simulation_res(results)
+    # })
+    
+    
+    
+    
+
+    observeEvent(input$btn_simulation, {
+
+        withProgress(message = "Simulation en cours...", value = 0, {
+
+            results <- lapply(seq_len(N_SIM), function(i) {
+
+                incProgress(
+                    1 / N_SIM,
+                    detail = paste(i, "/", N_SIM)
                 )
-            )
-        }
-        
-        run_simulations(df)
+
+                one_simulation(
+                    matches(),
+                    assignment,
+                    tournament(),
+                    elo
+                )
+            })
+
+            simulation_res(results)
+        })
     })
+    
+    
+    
+
+        
+    
+    
+    
+    #####################################
+    observe(
+        {
+            req(simulation_res())
+            choices_available<-get_r32_after_filter(simulation_res(),
+                                 team_filter(),
+                                 rank_filter()
+            )
+            updateSelectInput(session,
+                              "list_r32",
+                              choices = choices_available)
+
+            r32_filter(choices_available[1])
+            #qu'est ce que je met si vide ?
+        }
+    )
+    
+    observeEvent(c(simulation_res(),
+                   team_filter(),
+                   rank_filter(),
+                   r32_filter()), {
+                       req(simulation_res())
+                       t<-lapply(simulation_res(),
+                                 filter_result,
+                                 team_filter(), 
+                                 rank=rank_filter(),
+                                 r32=r32_filter())
+                       index<-which(unlist(t))
+                       simulation_res_filtered(simulation_res()[index])
+                       #isolate(print(length(simulation_res_filtered())))
+                       
+                       display_res(length(simulation_res_filtered())!=0)
+                   },priority=-1)
+    
+    observeEvent(c(simulation_res_filtered(),
+                   display_res(),
+                   rank_filter(),
+                   team_filter()), {
+                       req(simulation_res_filtered())
+                       req(display_res())
+                       req(rank_filter()!=4)
+                       #print("prio -2 compute graph path")
+                       graph_path(draw_path(simulation_res_filtered(),
+                                            team_filter()))
+                   },priority=-2)
+    
+    
+    observeEvent(c(simulation_res_filtered(),
+                   display_res(),
+                   team_filter()), {
+                       
+                       req(simulation_res_filtered())
+                       req(display_res())
+                       #print("prio -2 compute graph result")
+                       graph_result(build_result_graph(simulation_res_filtered(),team_filter()))
+                   },priority=-2)
+    
+    
+    ## -----RENDER -----------------------
+    
+    output$plot_rank_group<-renderPlot({
+        req(simulation_res())
+        draw_rank_graph(simulation_res(),team_filter())
+    })
+    output$plot_r32<-renderPlot({
+        req(simulation_res())
+        draw_r32_graph(simulation_res(),team_filter())
+    })
+    
+    
+    #avec simulation_res filtered
+    output$plot_final_result<-renderPlot({
+        graph_result()
+    })
+    
+    
+    output$plot_path<-renderPlot({
+        graph_path()
+    })
+    
+    
+
+    
+    
+
+    
+
 }
