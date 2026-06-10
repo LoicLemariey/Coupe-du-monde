@@ -4,7 +4,7 @@
 prct_minimal<-0.03
 
 
-N_SIM <- 10
+N_SIM <- 200
 tab_names <- c("A","B","C","D","E","F","G","H","I","J","K","L")
 
 scores<-read_xlsx("www/scores.xlsx")

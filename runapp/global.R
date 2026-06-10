@@ -118,9 +118,9 @@ compute_table <- function(matches){
             !is.na(Score_Away)
         )
     
-    if(nrow(played) == 0){
-        return(data.frame())
-    }
+    # if(nrow(played) == 0){
+    #     return(data.frame())
+    # }
     
 
     # LONG FORMAT
@@ -156,9 +156,9 @@ compute_table <- function(matches){
     
     all_matches <- bind_rows(home, away)
     
-    # ==================================================
+
     # GLOBAL TABLE
-    # ==================================================
+
     
     table_global <- all_matches %>%
         group_by(Group, team) %>%
@@ -183,15 +183,15 @@ compute_table <- function(matches){
     
     
     
-    # ==================================================
+  
     # H2H RANKING
-    # ==================================================
+
     
     h2h_rank <- function(block){
         
-        # ----------------------------------------------
+
         # PAR DEFAUT
-        # ----------------------------------------------
+
         
         block <- block %>%
             mutate(

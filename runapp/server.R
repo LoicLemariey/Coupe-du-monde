@@ -180,6 +180,7 @@ server <- function(input, output, session){
     
     # ---- BEST 3 ----
     output$tab_best3 <- renderTable({
+        req(rank_table())
         rank_table() %>%
             filter(rank == 3)%>% 
             select(rank_third,team,Qualification,Group,Match,Points,GD,GF) %>% 
@@ -416,17 +417,50 @@ server <- function(input, output, session){
     
     
 
+    # observeEvent(input$btn_simulation, {
+    # 
+    #     withProgress(message = "Simulation en cours...", value = 0, {
+    # 
+    #         results <- lapply(seq_len(N_SIM), function(i) {
+    # 
+    #             incProgress(
+    #                 1 / N_SIM,
+    #                 detail = paste(i, "/", N_SIM)
+    #             )
+    # 
+    #             one_simulation(
+    #                 matches(),
+    #                 assignment,
+    #                 tournament(),
+    #                 elo
+    #             )
+    #         })
+    # 
+    #         simulation_res(results)
+    #     })
+    # })
+    
+    
     observeEvent(input$btn_simulation, {
-
+        
         withProgress(message = "Simulation en cours...", value = 0, {
+            
+            step <- ceiling(N_SIM / 20)
 
+            
             results <- lapply(seq_len(N_SIM), function(i) {
-
-                incProgress(
-                    1 / N_SIM,
-                    detail = paste(i, "/", N_SIM)
-                )
-
+                
+                if (i %% step == 0 || i == N_SIM) {
+                    new_progress <- i / N_SIM
+                    
+                    incProgress(
+                        amount = step/N_SIM,
+                        detail = paste0(round(new_progress * 100), "%")
+                    )
+                    
+                    
+                }
+                
                 one_simulation(
                     matches(),
                     assignment,
@@ -434,14 +468,10 @@ server <- function(input, output, session){
                     elo
                 )
             })
-
+            
             simulation_res(results)
         })
     })
-    
-    
-    
-
         
     
     
@@ -484,12 +514,20 @@ server <- function(input, output, session){
                    display_res(),
                    rank_filter(),
                    team_filter()), {
+                       #print(rank_filter())
                        req(simulation_res_filtered())
-                       req(display_res())
-                       req(rank_filter()!=4)
+                       #req(display_res())
+                       bool<-rank_filter()!=4
+                       #req(bool==TRUE)
+                       if(bool&display_res()){
+                           graph_path(draw_path(simulation_res_filtered(),
+                                                team_filter()))
+                       }else{
+                           graph_path(NA)
+                       }
+                       
                        #print("prio -2 compute graph path")
-                       graph_path(draw_path(simulation_res_filtered(),
-                                            team_filter()))
+                    
                    },priority=-2)
     
     
@@ -498,9 +536,13 @@ server <- function(input, output, session){
                    team_filter()), {
                        
                        req(simulation_res_filtered())
-                       req(display_res())
+                       if(display_res()){
+                           graph_result(build_result_graph(simulation_res_filtered(),team_filter()))
+                       }else{
+                           graph_result(NA)
+                       }
                        #print("prio -2 compute graph result")
-                       graph_result(build_result_graph(simulation_res_filtered(),team_filter()))
+                       
                    },priority=-2)
     
     

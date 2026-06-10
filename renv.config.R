@@ -35,6 +35,7 @@ renv::status()
 renv::snapshot()
 dep<-renv::dependencies()
 
-
+library(rsconnect)
+.libPaths()
 #manifest
 rsconnect::writeManifest(verbose = TRUE)
