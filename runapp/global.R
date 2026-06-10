@@ -24,7 +24,7 @@ source("tab_ui.R")
 options(warn = -1)
 
 plan(multisession, workers = min(availableCores() - 1))
-handlers("txtprogressbar")
+# handlers("txtprogressbar")
 
 tournament<-read_xlsx("www/round32assignment.xlsx")
 levels_r32<-paste0("n°",tournament$ID[1:16]," ",
