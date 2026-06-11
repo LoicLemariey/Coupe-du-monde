@@ -1,4 +1,6 @@
 #group_analysis
+
+library(readxl)
 assignment<-read_xlsx("runapp/www/round32assignment.xlsx")
 annexe <- read.csv(
     "runapp/www/third.txt",
@@ -8,7 +10,7 @@ annexe <- read.csv(
 )[,-1]
 
 
-
+assignment<-assignment[1:16,]
 assignment$R16<-rep(1:8,each=2)#huitieme
 assignment$R8<-rep(1:4,each=4)
 assignment$R4<-rep(1:2,each=8)#demi
@@ -80,3 +82,7 @@ third<-data.frame(Group=all_groups,
                   Possible_oponnent=possible_adversaire_group,
                   next_match_same_group=Group_rencontre)
 
+library(dplyr)
+resultat$First<-row.names(resultat)
+resultat<-resultat %>% select(First,LETTERS[1:12])
+writexl::write_xlsx(resultat,"1_3 assignment summary.xlsx")

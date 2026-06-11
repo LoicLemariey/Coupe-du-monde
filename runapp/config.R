@@ -2,9 +2,9 @@
 
 
 prct_minimal<-0.03
+date_update_proba<-"2026-06-11"
 
-
-N_SIM <- 200
+N_SIM <- 100
 tab_names <- c("A","B","C","D","E","F","G","H","I","J","K","L")
 
 scores<-read_xlsx("www/scores.xlsx")
@@ -13,6 +13,16 @@ all_teams <- bind_rows(
     scores %>% select(Group, team = away)
 ) %>%
     distinct()
+
+
+renderer_lock<- "function(instance, td) {
+                    Handsontable.renderers.TextRenderer.apply(this, arguments);
+                    td.style.background = '#f0f0f0';
+                }
+            "
+
+
+
 team_colors <- c(
     "Mexico" = "#006847",
     "South Korea" = "#E60026",

@@ -17,6 +17,7 @@ server <- function(input, output, session){
     
     graph_result<-reactiveVal()
     graph_path<-reactiveVal()
+    table_path<-reactiveVal()
     
     observe(team_filter(input$list_team))
     observe(rank_filter(input$list_rank))
@@ -442,7 +443,7 @@ server <- function(input, output, session){
     
     
     observeEvent(input$btn_simulation, {
-        
+        t1<-Sys.time()
         withProgress(message = "Simulation en cours...", value = 0, {
             
             step <- ceiling(N_SIM / 20)
@@ -471,6 +472,9 @@ server <- function(input, output, session){
             
             simulation_res(results)
         })
+        t2<-Sys.time()
+        my_time<-difftime(t2,t1)
+        print(my_time)
     })
         
     
@@ -486,7 +490,7 @@ server <- function(input, output, session){
             )
             updateSelectInput(session,
                               "list_r32",
-                              choices = choices_available)
+                              choices = sort(choices_available))
 
             r32_filter(choices_available[1])
             #qu'est ce que je met si vide ?
@@ -520,10 +524,14 @@ server <- function(input, output, session){
                        bool<-rank_filter()!=4
                        #req(bool==TRUE)
                        if(bool&display_res()){
-                           graph_path(draw_path(simulation_res_filtered(),
-                                                team_filter()))
+                           my_path<-draw_path(simulation_res_filtered(),
+                                              team_filter())
+                           graph_path(my_path$graph)
+                           table_path(my_path$table)
+
                        }else{
                            graph_path(NA)
+                           table_path(NA)
                        }
                        
                        #print("prio -2 compute graph path")
@@ -569,10 +577,41 @@ server <- function(input, output, session){
     })
     
     
-
+    output$table_path <- DT::renderDT({
+        DT::datatable(
+            table_path(),
+            filter = "none",
+            options = list(
+                dom = "t",
+                paging = FALSE,
+                ordering = TRUE
+            )
+        )
+    })
     
     
-
+    observeEvent(input$show_table, {
+        
+        showModal(
+            modalDialog(
+                title = "Possible opponents table",
+                
+                div(
+                    style = "height:700px; overflow-y:auto;",
+                    DTOutput("table_path")
+                ),
+                
+                easyClose = TRUE,
+                size = "l"
+            )
+        )
+        
+    })
     
+    
+    output$txt_group <- renderText({
+        paste("Group:",all_teams$Group[all_teams$team==input$list_team])
+    })
+ 
 
 }

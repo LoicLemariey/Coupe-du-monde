@@ -180,15 +180,49 @@ $(document).on('shiny:value shiny:recalculated', function(){
 
     nav_panel(
         "Qualifications Simulations",
-        h5("Qualification and future opponents probability based on scores simulations (Monte Carlo Estimation)"),
-        actionButton("btn_simulation","Simulate"),
+        div(
+            style = "display:flex; align-items:center; gap:10px;",
+            
+            h5(
+                "Qualification and future opponents probability based on scores simulations (Monte Carlo Estimation)",
+                style = "margin:0;"
+            ),
+            
+            actionButton(
+                "btn_simulation",
+                "Simulate",
+                style = "width:auto;"
+            )
+        ),
+        
+        
+        
             h4("Group stage results"),
-            selectInput(inputId="list_team",
-                        label = "Team",
-                        choices = sort(all_teams$team)),
+        div(
+            style = "display:flex; align-items:center; gap:15px;",
+            
+            selectInput(
+                inputId = "list_team",
+                label = "Team",
+                choices = sort(all_teams$team),
+                width = "250px"
+            ),
+            
+            div(
+                style = "padding-top:25px;",
+                textOutput("txt_group")
+            )
+        ),
+        
+        
             fluidRow(
-                column(6,plotOutput("plot_rank_group",height = "250px")),
-                column(6,plotOutput("plot_r32",height = "250px"))
+                column(6,
+                       div(h4("Group rank distribution"),
+                           plotOutput("plot_rank_group",height = "250px"))),
+                column(6,
+                       div(h4("Round of 32 distribution"),
+                           plotOutput("plot_r32",height = "250px"))
+                       )
             ),
 
         fluidRow(
@@ -203,8 +237,21 @@ $(document).on('shiny:value shiny:recalculated', function(){
         ),
         br(),
         h4("Results"),
-        div(plotOutput("plot_final_result",height="100px")),
-        h4("Future possible opponents at each round"),
+        div(plotOutput("plot_final_result",height="130px")),
+        div(
+            style = "display:flex; align-items:center; gap:10px;",
+            
+            h4(
+                "Future possible opponents at each round",
+                style = "margin:0;"
+            ),
+            
+            actionButton(
+                "show_table",
+                "Show details"
+            )
+        ),
         div(plotOutput("plot_path",height="500px"))
+        #div(DTOutput("table_path"),height="700px")
     )
 )
