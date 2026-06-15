@@ -52,4 +52,8 @@ dep<-renv::dependencies()
 library(rsconnect)
 .libPaths()
 #manifest
-rsconnect::writeManifest(verbose = TRUE)
+
+deps <- rsconnect::appDependencies()
+deps[deps$Package == "data.table", ]
+
+rsconnect::writeManifest(verbose = TRUE,)
