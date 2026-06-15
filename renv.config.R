@@ -6,6 +6,9 @@ library(renv)
 renv_lib<-"C:/Users/loicl/OneDrive/Documents/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coupe_du_monde_2026/renv/library/R-4.2/x86_64-w64-mingw32"
 lib2<-"C:/Users/loicl/AppData/Local/R/cache/R/renv/sandbox/R-4.2/x86_64-w64-mingw32/0cdf27ab"
 
+
+project_runapp<-"~/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coupe_du_monde_2026/runapp"
+
 .libPaths(renv_lib)
 .libPaths(lib2)
 
@@ -43,7 +46,7 @@ install.packages("rvest",lib = lib2)
 #renv
 .libPaths()
 renv::status()
-renv::snapshot()
+renv::snapshot(library = renv_lib)
 dep<-renv::dependencies()
 
 library(rsconnect)
