@@ -28,8 +28,18 @@ scores2<-scores2 %>% select(Group,match_id,home,Score_Home,Score_Away,away)
 write_xlsx(scores2,"runapp/www/scores.xlsx")
 
 
-
-
+load("runapp/www/elo_and_proba/2026-06-11Proba_list.Rdata")
+# for(i in seq_along(list)) {
+#     
+#     scores_num <- do.call(
+#         rbind,
+#         strsplit(list[[i]]$name, ":", fixed = TRUE)
+#     )
+#     
+#     list[[i]]$home_score <- as.integer(scores_num[,1])
+#     list[[i]]$away_score <- as.integer(scores_num[,2])
+# }
+old_proba<-list
 
 
 
@@ -40,8 +50,8 @@ write_xlsx(scores2,"runapp/www/scores.xlsx")
 
 # 1) RECOVER PROBA WINAMAX -----------------------------------------------------
 #a changer car elle change avec le temps.
-new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66456904?T=exp=1781255808~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=ad32bbf7d5d407cd052270e7681c8eddb784510c0504879e57664c32ed3587ff"
-new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66456904?T=exp=1781255808~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=ad32bbf7d5d407cd052270e7681c8eddb784510c0504879e57664c32ed3587ff"
+new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457052?T=exp=1781618688~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=b08119a3a38a2925b38873eafd0f0cf16e127efca5974dfefc596b549da0c07a"
+new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457052?T=exp=1781618688~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=b08119a3a38a2925b38873eafd0f0cf16e127efca5974dfefc596b549da0c07a"
 
 
 
@@ -90,8 +100,23 @@ recover_proba<-function(url_infos,url_markets,match_ids){
             mutate(probability=probability/sum(probability))
     }
     names(list_proba_score)<-matchs_df$match_id
+    
+    list<-list_proba_score
+    for(i in seq_along(list)) {
+        
+        scores_num <- do.call(
+            rbind,
+            strsplit(list[[i]]$name, ":", fixed = TRUE)
+        )
+        
+        list[[i]]$home_score <- as.integer(scores_num[,1])
+        list[[i]]$away_score <- as.integer(scores_num[,2])
+    }
+    
+    
+    
     out<-list(matchs_df=matchs_df,
-              list_proba_score = list_proba_score)
+              list_proba_score = list)
     return(out)
 }
 
@@ -102,16 +127,23 @@ n_match<-6*12
 
 
 url_infos <- sapply(match_ids, function(id) {
-    stringr::str_replace(new_url_stats, "66456904", id)
+    stringr::str_replace(new_url_stats, "66457052", id)
 })
 url_markets <- sapply(match_ids, function(id) {
-    stringr::str_replace(new_url_market, "66456904", id)
+    stringr::str_replace(new_url_market, "66457052", id)
 })
 
 
 res<-recover_proba(url_infos,url_markets,match_ids)
 res$list_proba_score[[match_ids[3]]]
-list<-res$list_proba_score
+list_new<-res$list_proba_score
+
+
+n<-n_match-length(list_new)
+list <- c(
+    list_new,
+    old_proba[!(names(old_proba) %in% names(list_new))]
+)
 
 save(list,file=paste0(Sys.Date(),"Proba_list.Rdata"))
 

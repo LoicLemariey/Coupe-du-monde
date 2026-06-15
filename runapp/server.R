@@ -18,6 +18,8 @@ server <- function(input, output, session){
     graph_result<-reactiveVal()
     graph_path<-reactiveVal()
     table_path<-reactiveVal()
+    setup<-reactiveVal()
+    display_simu_res<-reactiveVal(FALSE)
     
     observe(team_filter(input$list_team))
     observe(rank_filter(input$list_rank))
@@ -25,9 +27,8 @@ server <- function(input, output, session){
     
     observeEvent(matches(), {
         req(matches())
-        #print(matches())
         rank_table(compute_table(matches()))
-        #View(rank_table())
+        setup(prepare_tournament(matches()))
     })
     
     
@@ -444,11 +445,21 @@ server <- function(input, output, session){
     
     observeEvent(input$btn_simulation, {
         t1<-Sys.time()
+        
+        # res_time<-profvis({
+        #     one_simulation(matches(),
+        #                    assignment,
+        #                    tournament(),
+        #                    elo)
+        # })
+        display_simu_res(TRUE)
         withProgress(message = "Simulation en cours...", value = 0, {
             
             step <- ceiling(N_SIM / 20)
 
-            
+            # View(matches())
+            # View(tournament())
+            # View(setup())
             results <- lapply(seq_len(N_SIM), function(i) {
                 
                 if (i %% step == 0 || i == N_SIM) {
@@ -461,16 +472,27 @@ server <- function(input, output, session){
                     
                     
                 }
+
+                # one_simulation(
+                #     matches(),
+                #     assignment,
+                #     tournament(),
+                #     elo
+                # )
                 
-                one_simulation(
+                
+                one_simulation_fast(
                     matches(),
                     assignment,
                     tournament(),
-                    elo
+                    elo,
+                    setup()
                 )
+                
             })
             
             simulation_res(results)
+            
         })
         t2<-Sys.time()
         my_time<-difftime(t2,t1)
@@ -488,15 +510,20 @@ server <- function(input, output, session){
                                  team_filter(),
                                  rank_filter()
             )
+            
+            num<- as.numeric(sub("^n°([0-9]+).*", "\\1", choices_available))
+            choices_available<-choices_available[order(choices_available != "All", num)]
             updateSelectInput(session,
                               "list_r32",
-                              choices = sort(choices_available))
+                              choices = choices_available)
 
             r32_filter(choices_available[1])
             #qu'est ce que je met si vide ?
         }
     )
     
+    
+    #filtre les données
     observeEvent(c(simulation_res(),
                    team_filter(),
                    rank_filter(),
@@ -509,20 +536,20 @@ server <- function(input, output, session){
                                  r32=r32_filter())
                        index<-which(unlist(t))
                        simulation_res_filtered(simulation_res()[index])
-                       #isolate(print(length(simulation_res_filtered())))
+                     
                        
                        display_res(length(simulation_res_filtered())!=0)
                    },priority=-1)
     
+    
+    
+    #path
     observeEvent(c(simulation_res_filtered(),
                    display_res(),
                    rank_filter(),
                    team_filter()), {
-                       #print(rank_filter())
                        req(simulation_res_filtered())
-                       #req(display_res())
                        bool<-rank_filter()!=4
-                       #req(bool==TRUE)
                        if(bool&display_res()){
                            my_path<-draw_path(simulation_res_filtered(),
                                               team_filter())
@@ -533,12 +560,12 @@ server <- function(input, output, session){
                            graph_path(NA)
                            table_path(NA)
                        }
-                       
-                       #print("prio -2 compute graph path")
                     
                    },priority=-2)
     
     
+    
+    #graph result
     observeEvent(c(simulation_res_filtered(),
                    display_res(),
                    team_filter()), {
@@ -549,7 +576,7 @@ server <- function(input, output, session){
                        }else{
                            graph_result(NA)
                        }
-                       #print("prio -2 compute graph result")
+                       
                        
                    },priority=-2)
     
@@ -578,6 +605,7 @@ server <- function(input, output, session){
     
     
     output$table_path <- DT::renderDT({
+        req(!is.na(table_path()))
         DT::datatable(
             table_path(),
             filter = "none",
@@ -612,6 +640,13 @@ server <- function(input, output, session){
     output$txt_group <- renderText({
         paste("Group:",all_teams$Group[all_teams$team==input$list_team])
     })
+    
+    
+    output$show_panel <- reactive({
+        display_simu_res()
+    })
+    
+    outputOptions(output, "show_panel", suspendWhenHidden = FALSE)
  
 
 }

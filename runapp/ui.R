@@ -196,25 +196,29 @@ $(document).on('shiny:value shiny:recalculated', function(){
         ),
         
         
+        #---------------conditionnal pannel-------------------------------------
         
+        conditionalPanel(
+            condition = "output.show_panel",
             h4("Group stage results"),
-        div(
-            style = "display:flex; align-items:center; gap:15px;",
-            
-            selectInput(
-                inputId = "list_team",
-                label = "Team",
-                choices = sort(all_teams$team),
-                width = "250px"
+            div(
+                style = "display:flex; align-items:center; gap:15px;",
+                
+                selectInput(
+                    inputId = "list_team",
+                    label = "Team",
+                    choices = sort(all_teams$team),
+                    selected = "France",
+                    width = "250px"
+                ),
+                
+                div(
+                    style = "padding-top:25px;",
+                    textOutput("txt_group")
+                )
             ),
             
-            div(
-                style = "padding-top:25px;",
-                textOutput("txt_group")
-            )
-        ),
-        
-        
+            
             fluidRow(
                 column(6,
                        div(h4("Group rank distribution"),
@@ -222,36 +226,37 @@ $(document).on('shiny:value shiny:recalculated', function(){
                 column(6,
                        div(h4("Round of 32 distribution"),
                            plotOutput("plot_r32",height = "250px"))
-                       )
-            ),
-
-        fluidRow(
-            column(2,selectInput(inputId="list_rank",
-                                 label = "Group Rank",
-                                 choices = c("All",1,2,3,4),
-                                 selected = "All")),
-            column(3,selectInput(inputId="list_r32",
-                                 label = "Round of 32",
-                                 choices = c("All",levels_r32),
-                                 selected = "All"))
-        ),
-        br(),
-        h4("Results"),
-        div(plotOutput("plot_final_result",height="130px")),
-        div(
-            style = "display:flex; align-items:center; gap:10px;",
-            
-            h4(
-                "Future possible opponents at each round",
-                style = "margin:0;"
+                )
             ),
             
-            actionButton(
-                "show_table",
-                "Show details"
-            )
-        ),
-        div(plotOutput("plot_path",height="500px"))
-        #div(DTOutput("table_path"),height="700px")
+            fluidRow(
+                column(2,selectInput(inputId="list_rank",
+                                     label = "Group Rank",
+                                     choices = c("All",1,2,3,4),
+                                     selected = "All")),
+                column(3,selectInput(inputId="list_r32",
+                                     label = "Round of 32",
+                                     choices = c("All",levels_r32),
+                                     selected = "All"))
+            ),
+            br(),
+            h4("Results"),
+            div(plotOutput("plot_final_result",height="130px")),
+            div(
+                style = "display:flex; align-items:center; gap:10px;",
+                
+                h4(
+                    "Future possible opponents at each round",
+                    style = "margin:0;"
+                ),
+                
+                actionButton(
+                    "show_table",
+                    "Show details"
+                )
+            ),
+            div(plotOutput("plot_path",height="500px"))
+            #div(DTOutput("table_path"),height="700px")
+        )
     )
 )
