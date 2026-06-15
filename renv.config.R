@@ -29,8 +29,8 @@ install.packages("rhandsontable")
 install.packages("stringr")
 install.packages("scales")
 install.packages("ggplot2")
-install.packages("future.apply")
-install.packages("furrr")
+install.packages("data.table")
+
 
 install.packages("writexl",lib = lib2)
 install.packages("dplyr",lib = lib2)
@@ -56,4 +56,4 @@ library(rsconnect)
 deps <- rsconnect::appDependencies()
 deps[deps$Package == "data.table", ]
 
-rsconnect::writeManifest(verbose = TRUE,)
+rsconnect::writeManifest(verbose = TRUE)
