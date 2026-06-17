@@ -57,3 +57,4 @@ deps <- rsconnect::appDependencies()
 deps[deps$Package == "data.table", ]
 
 rsconnect::writeManifest(verbose = TRUE)
+rsconnect::writeManifest(appDir = ".", verbose = TRUE)

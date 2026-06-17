@@ -28,7 +28,7 @@ scores2<-scores2 %>% select(Group,match_id,home,Score_Home,Score_Away,away)
 write_xlsx(scores2,"runapp/www/scores.xlsx")
 
 
-load("runapp/www/elo_and_proba/2026-06-11Proba_list.Rdata")
+load("runapp/www/elo_and_proba/2026-06-15Proba_list.Rdata")
 # for(i in seq_along(list)) {
 #     
 #     scores_num <- do.call(
@@ -41,22 +41,6 @@ load("runapp/www/elo_and_proba/2026-06-11Proba_list.Rdata")
 # }
 old_proba<-list
 
-
-
-
-
-
-
-
-# 1) RECOVER PROBA WINAMAX -----------------------------------------------------
-#a changer car elle change avec le temps.
-new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457052?T=exp=1781618688~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=b08119a3a38a2925b38873eafd0f0cf16e127efca5974dfefc596b549da0c07a"
-new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457052?T=exp=1781618688~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=b08119a3a38a2925b38873eafd0f0cf16e127efca5974dfefc596b549da0c07a"
-
-
-
-#41 jamais plus de 6 buts en tout : 28 valeurs
-#45 jamais  plus de 4 buts pour une equipe: 25 valeurs
 
 
 
@@ -120,6 +104,22 @@ recover_proba<-function(url_infos,url_markets,match_ids){
     return(out)
 }
 
+
+# 1) RECOVER PROBA WINAMAX -----------------------------------------------------
+#a changer car elle change avec le temps.
+new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457028?T=exp=1781782848~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=c979b2342ef6cd18589ea9b7465906ac9e216b233c7894f66f40a1cfdc11457d"
+new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457028?T=exp=1781782848~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=c979b2342ef6cd18589ea9b7465906ac9e216b233c7894f66f40a1cfdc11457d"
+
+
+
+#41 jamais plus de 6 buts en tout : 28 valeurs
+#45 jamais  plus de 4 buts pour une equipe: 25 valeurs
+
+
+
+
+
+
 match_ids<-scores$match_id[is.na(scores$Score_Home)]
 n_match<-6*12
 
@@ -127,10 +127,10 @@ n_match<-6*12
 
 
 url_infos <- sapply(match_ids, function(id) {
-    stringr::str_replace(new_url_stats, "66457052", id)
+    stringr::str_replace(new_url_stats, "66457028", id)
 })
 url_markets <- sapply(match_ids, function(id) {
-    stringr::str_replace(new_url_market, "66457052", id)
+    stringr::str_replace(new_url_market, "66457028", id)
 })
 
 

@@ -267,7 +267,7 @@ server <- function(input, output, session){
     
     output$round32_ui <- renderUI({
         tagList(
-            div(class="round-title", "32èmes de finale"),
+            div(class="round-title", "Round of 32"),
             lapply(1:nrow(round32()), function(i){
                 div(class="match-box",
                     radioButtons(
@@ -289,7 +289,7 @@ server <- function(input, output, session){
     output$round16_ui <- renderUI({
         w<-winners_r32()
         tagList(
-            div(class="round-title", "8èmes de finale"),
+            div(class="round-title", "Round of 16"),
             lapply(1:8, function(i){
                 
                 t1 <- w[(i * 2) - 1]
@@ -320,7 +320,7 @@ server <- function(input, output, session){
     output$quarter_ui <- renderUI({
         w <- winners_r16()
         tagList(
-            div(class="round-title", "Quarts de finale"),
+            div(class="round-title", "Quarter"),
             lapply(1:4, function(i){
                 
                 t1 <- w[(i * 2) - 1]
@@ -350,7 +350,7 @@ server <- function(input, output, session){
     output$semi_ui <- renderUI({
         w <- winners_quarter()
         tagList(
-            div(class="round-title", "Demi-finales"),
+            div(class="round-title", "Semi"),
             lapply(1:2, function(i){
                 t1 <- w[(i*2)-1]
                 t2 <- w[(i*2)]
@@ -371,7 +371,7 @@ server <- function(input, output, session){
     output$final_ui <- renderUI({
         w <- winners_semi()
         div(
-            class="round-title", "Finale",
+            class="round-title", "Final",
             div(class="match-box",
                 radioButtons(
                     "f",

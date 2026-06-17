@@ -717,9 +717,9 @@ draw_r32_graph<-function(results,team){
             size = 4
         ) +
         labs(x = NULL, y = NULL) +
-        geom_hline(yintercept = 4.5, linetype = "dotted")+
-        geom_hline(yintercept = 12.5, linetype = "dotted")+
-        geom_hline(yintercept = 8.5, linetype = "dashed")+theme_minimal()
+        geom_hline(yintercept = 5.5, linetype = "dotted")+
+        geom_hline(yintercept = 13.5, linetype = "dotted")+
+        geom_hline(yintercept = 9.5, linetype = "dashed")+theme_minimal()
     
 }
 
@@ -781,7 +781,7 @@ draw_rank_graph<-function(results,team){
 # 
 
 
-draw_path<-function(results,team){
+draw_path_old<-function(results,team){
     all_teams<-all_teams$team[all_teams$team!=team]
     
     t<-sapply(results,get_all_path,team,simplify = FALSE)
@@ -899,6 +899,128 @@ draw_path<-function(results,team){
 }
 
 
+draw_path <- function(results, team){
+    
+    all_teams <- all_teams$team[all_teams$team != team]
+    
+    t <- sapply(results, get_all_path, team, simplify = FALSE)
+    
+    t_clean <- t[!is.na(t)]
+    
+    mat <- matrix(unlist(t_clean), ncol = 5, byrow = TRUE)
+    
+    opponent_round <- lapply(
+        seq_len(ncol(mat)),
+        function(i) table(mat[, i, drop = TRUE])
+    )
+    
+    names(opponent_round) <- c("r32", "r16", "Quarter", "Semi", "Final")
+    
+    df <- purrr::imap_dfr(
+        opponent_round,
+        ~ tibble(
+            round = .y,
+            opponent = names(.x),
+            n = as.numeric(.x)
+        )
+    )
+    
+    df <- df |>
+        group_by(round) |>
+        mutate(prop = n / sum(n)) |>
+        ungroup()
+    
+    df_table <- df
+    
+    df <- df |>
+        mutate(
+            opponent = ifelse(prop < prct_minimal, "OTHER", opponent)
+        ) |>
+        group_by(round, opponent) |>
+        summarise(n = sum(n), .groups = "drop") |>
+        group_by(round) |>
+        mutate(
+            prop = n / sum(n)
+        ) |>
+        ungroup()
+    
+    # Ordre décroissant des probabilités dans chaque round
+    df <- df |>
+        group_by(round) |>
+        arrange(desc(prop), .by_group = TRUE) |>
+        mutate(
+            stack_order = row_number(),
+            label = paste0(opponent, " ", round(100 * prop, 0), "%")
+        ) |>
+        ungroup()
+    
+    # facteur unique par round permettant de contrôler l'empilement
+    df <- df |>
+        mutate(
+            stack_id = paste(round, opponent, sep = "__")
+        )
+    
+    stack_levels <- df |>
+        arrange(round, desc(prop)) |>
+        pull(stack_id)
+    
+    df$stack_id <- factor(df$stack_id, levels = rev(stack_levels))
+    
+    df$round <- factor(
+        df$round,
+        levels = c("r32", "r16", "Quarter", "Semi", "Final")
+    )
+    
+    p1 <- ggplot(
+        df,
+        aes(
+            x = round,
+            y = prop,
+            fill = opponent,
+            group = stack_id
+        )
+    ) +
+        geom_col(width = 0.8) +
+        geom_text(
+            aes(label = label),
+            position = position_stack(vjust = 0.5),
+            size = 3,
+            check_overlap = TRUE
+        ) +
+        scale_y_continuous(labels = scales::percent_format()) +
+        labs(
+            x = NULL,
+            y = "Probability",
+            fill = "Opponent"
+        ) +
+        theme_minimal() +
+        scale_fill_manual(values = team_colors)
+    
+    countries_df <- data.frame(
+        opponent = all_teams
+    )
+    
+    df_table <- df_table |>
+        mutate(prop = round(prop * 100, 1)) |>
+        select(round, opponent, prop)
+    
+    df_wide <- df_table |>
+        pivot_wider(
+            names_from = round,
+            values_from = prop,
+            values_fill = 0,
+            values_fn = sum
+        ) |>
+        right_join(countries_df, by = "opponent") |>
+        mutate(across(-opponent, ~ replace_na(.x, 0)))
+    
+    res <- list(
+        graph = p1,
+        table = df_wide
+    )
+    
+    return(res)
+}
 
 # filter------------------------------------------------------------------------
 
