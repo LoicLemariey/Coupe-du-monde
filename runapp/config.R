@@ -2,7 +2,7 @@
 
 
 prct_minimal<-0.03
-date_update_proba<-"2026-06-17"
+date_update_proba<-"2026-06-19"
 
 N_SIM <- 10000
 tab_names <- c("A","B","C","D","E","F","G","H","I","J","K","L")
