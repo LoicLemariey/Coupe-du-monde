@@ -107,8 +107,8 @@ recover_proba<-function(url_infos,url_markets,match_ids){
 
 # 1) RECOVER PROBA WINAMAX -----------------------------------------------------
 #a changer car elle change avec le temps.
-new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457028?T=exp=1781955648~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=d78848d8e6f13ff1acfad6f3252ea73bb1ec9a8ed0ca2a3ba0e00eef02c2a9b2"
-new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457028?T=exp=1781955648~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=d78848d8e6f13ff1acfad6f3252ea73bb1ec9a8ed0ca2a3ba0e00eef02c2a9b2"
+new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457028?T=exp=1782119808~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=9e618b98347ee35a06a12f74d5eaeedfea0bd10099774db150d77b1fcf647afd"
+new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457028?T=exp=1782119808~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=9e618b98347ee35a06a12f74d5eaeedfea0bd10099774db150d77b1fcf647afd"
 
 
 
