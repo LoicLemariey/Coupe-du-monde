@@ -1547,3 +1547,29 @@ one_simulation_fast<-function(scores,assignment,tournament,elo_vec,setup){
     res<-list(rank_table=rank_list,tournament=simu$tournament)#,elo = simu$elo_df)
     return(res)
 }
+
+
+
+team_frequency <- function(team, simulation_res_filtered) {
+    
+    positions <- sapply(simulation_res_filtered, function(sim) {
+        #browser()
+        ranking <- sim$rank_table$best_thirds
+        
+        if (team %in% ranking) {
+            match(team, ranking)
+        } else {
+            NA_integer_
+        }
+    })
+    
+    result <- data.frame(
+        Position = c(paste0("Pos", 1:8), "Absent"),
+        Count = c(
+            sapply(1:8, function(i) sum(positions == i, na.rm = TRUE)),
+            sum(is.na(positions))
+        )
+    )
+    
+    print(result)
+}

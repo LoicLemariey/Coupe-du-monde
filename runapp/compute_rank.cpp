@@ -113,6 +113,7 @@ List compute_rank_cpp(
     CharacterVector third_group(n_groups);
     IntegerVector third_pts(n_groups);
     IntegerVector third_gd(n_groups);
+    IntegerVector third_gf(n_groups);
     
     // ----------------------------
     // GROUP LOOP
@@ -230,6 +231,7 @@ List compute_rank_cpp(
         third_group[g] = group_names[g];
         third_pts[g] = pts_g[order[2]];
         third_gd[g] = gd_g[order[2]];
+        third_gf[g] = gf_g[order[2]];
     }
     
     // ----------------------------
@@ -237,6 +239,10 @@ List compute_rank_cpp(
     // ----------------------------
     IntegerVector idx(n_groups);
     for(int i=0;i<n_groups;i++) idx[i]=i;
+    
+    std::vector<double> lottery(n_groups);
+    for(int i=0; i<n_groups; i++)
+        lottery[i] = R::runif(0.0, 1.0);
     
     std::sort(idx.begin(), idx.end(),
               [&](int a, int b){
@@ -247,7 +253,10 @@ List compute_rank_cpp(
                   if(third_gd[a] != third_gd[b])
                       return third_gd[a] > third_gd[b];
                   
-                  return third_team[a] < third_team[b];
+                  if(third_gf[a] != third_gf[b])
+                      return third_gf[a] > third_gf[b];
+                  
+                  return lottery[a] > lottery[b];
               }
     );
     

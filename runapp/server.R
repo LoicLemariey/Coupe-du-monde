@@ -25,12 +25,28 @@ server <- function(input, output, session){
     observe(rank_filter(input$list_rank))
     observe(r32_filter(input$list_r32))
     
+    observeEvent(refresh(), {
+        #print(paste0("refresh: ",refresh()))
+        req(matches_init())
+    
+        matches(matches_init())
+        #print(head(matches()))
+
+    })
+    
+    
     observeEvent(matches(), {
         req(matches())
         rank_table(compute_table(matches()))
         setup(prepare_tournament(matches()))
+        #View(rank_table())
     })
     
+    
+    # observeEvent(c(simulation_res_filtered(),input$list_team),{
+    #     req(simulation_res_filtered())
+    #     team_frequency(input$list_team,simulation_res_filtered())
+    # })
     
 
 
@@ -39,13 +55,21 @@ server <- function(input, output, session){
     # --------------IMPORT EXCEL-----------------------------------------------
 
     
+    # matches_init <- reactiveVal(NULL)
+    # observe(
+    #     matches_init(readxl::read_excel("www/scores.xlsx") %>%
+    #                 dplyr::mutate(
+    #                     Score_Home = suppressWarnings(as.integer(Score_Home)),
+    #                     Score_Away = suppressWarnings(as.integer(Score_Away))
+    #                 )))
     
-    observe(
-        matches_init(readxl::read_excel("www/scores.xlsx") %>%
-                    dplyr::mutate(
-                        Score_Home = suppressWarnings(as.integer(Score_Home)),
-                        Score_Away = suppressWarnings(as.integer(Score_Away))
-                    )))
+    matches_init <- reactiveVal(
+        readxl::read_excel("www/scores.xlsx") %>%
+            dplyr::mutate(
+                Score_Home = suppressWarnings(as.integer(Score_Home)),
+                Score_Away = suppressWarnings(as.integer(Score_Away))
+            )
+    )
     
     
     observeEvent(input$file, {
@@ -154,10 +178,18 @@ server <- function(input, output, session){
                 req(matches_init())
                 
                 
+                
+                current <- isolate(matches())
+                #current <- matches_init()
+                # if(!is.null(matches())){
+                #     current <- matches()
+                # }
+                
+                
                 # table modifiée
                 new_data <- hot_to_r(input[[paste0("table_", mod)]])
                 # dataframe global
-                current <- matches_init()
+
                 
                 # update des lignes correspondantes
                 for (i in seq_len(nrow(new_data))) {
@@ -457,9 +489,7 @@ server <- function(input, output, session){
             
             step <- ceiling(N_SIM / 20)
 
-            # View(matches())
-            # View(tournament())
-            # View(setup())
+
             results <- lapply(seq_len(N_SIM), function(i) {
                 
                 if (i %% step == 0 || i == N_SIM) {
@@ -648,5 +678,10 @@ server <- function(input, output, session){
     
     outputOptions(output, "show_panel", suspendWhenHidden = FALSE)
  
+    
+    
+    
+    
+
 
 }
