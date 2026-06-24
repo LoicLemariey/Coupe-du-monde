@@ -14,37 +14,7 @@ setwd("~/Loïc/Divers_non_disque/Data_science/Projet/MesProjets/Coupe_du_monde_2
 rm(list=ls())
 
 
-
-
-
-
-#----------translate team score-------------------------------------------------
-scores<-read_xlsx("runapp/www/scores.xlsx")
-countries<-read_xlsx("runapp/www/countries.xlsx")
-scores2<-merge(scores,countries[,1:2],by.x="home",by.y="Team_Fr")
-scores2<-merge(scores2,countries[,1:2],by.x="away",by.y="Team_Fr")
-names(scores2)<-c("away_fr","home_fr","Group","Score_Home","Score_Away","match_id","home","away")
-scores2<-scores2 %>% select(Group,match_id,home,Score_Home,Score_Away,away)
-write_xlsx(scores2,"runapp/www/scores.xlsx")
-
-
-load("runapp/www/elo_and_proba/2026-06-21Proba_list.Rdata")
-# for(i in seq_along(list)) {
-#     
-#     scores_num <- do.call(
-#         rbind,
-#         strsplit(list[[i]]$name, ":", fixed = TRUE)
-#     )
-#     
-#     list[[i]]$home_score <- as.integer(scores_num[,1])
-#     list[[i]]$away_score <- as.integer(scores_num[,2])
-# }
-old_proba<-list
-
-
-
-
-
+#-----------------function----
 recover_proba<-function(url_infos,url_markets,match_ids){
     
     n_match<-length(url_infos)
@@ -103,12 +73,95 @@ recover_proba<-function(url_infos,url_markets,match_ids){
               list_proba_score = list)
     return(out)
 }
+build_winamax_proba<-function(new_url_market,new_url_stats){
+    scores<-read_xlsx("runapp/www/scores.xlsx")
+    match_ids<-scores$match_id[is.na(scores$Score_Home)]
+    n_match<-6*12
+    load("runapp/www/elo_and_proba/2026-06-22Proba_list.Rdata")
+    old_proba<-list
+    
+    
+    
+    
+    url_infos <- sapply(match_ids, function(id) {
+        stringr::str_replace(new_url_stats, "66457028", id)
+    })
+    url_markets <- sapply(match_ids, function(id) {
+        stringr::str_replace(new_url_market, "66457028", id)
+    })
+    
+    
+    res<-recover_proba(url_infos,url_markets,match_ids)
+    res$list_proba_score[[match_ids[3]]]
+    list_new<-res$list_proba_score
+    
+    
+    n<-n_match-length(list_new)
+    list <- c(
+        list_new,
+        old_proba[!(names(old_proba) %in% names(list_new))]
+    )
+    
+    save(list,file=paste0("runapp/www/elo_and_proba/",Sys.Date(),"Proba_list.Rdata"))
+}
+build_elo<-function(){
+    url_elo<-'https://www.eloratings.net/World.tsv?_=1780235318230'
+    res_elo <- GET(url_elo, add_headers(
+        `User-Agent` = "Mozilla/5.0",
+        `Referer` = "https://www.winamax.fr/",
+        `Accept` = "application/json"
+    ))
+    content_text_elo <- content(res_elo, as = "text", encoding = "UTF-8")
+    
+    
+    df_elo <- read_tsv(url_elo, col_names = FALSE) %>% mutate(id_iso = X3,
+                                                              Elo = X4) %>% 
+        select(id_iso,Elo)
+    
+    coutries<-read_xlsx("runapp/www/countries.xlsx")
+    df_elo_world_cup<-merge(coutries,df_elo)
+    writexl::write_xlsx(df_elo_world_cup,paste0("runapp/www/elo_and_proba/",Sys.Date(),"elo.xlsx"))
+}
+
+
+build_elo()
+new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457028?T=exp=1782370368~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=2b22c46b23276c92cf90630a65a8c4f96f903588f747fc8ccd9eafc89a3fac7f"
+new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457028?T=exp=1782370368~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=2b22c46b23276c92cf90630a65a8c4f96f903588f747fc8ccd9eafc89a3fac7f"
+build_winamax_proba(new_url_market,new_url_stats)
+
+#----------translate team score-------------------------------------------------
+scores<-read_xlsx("runapp/www/scores.xlsx")
+countries<-read_xlsx("runapp/www/countries.xlsx")
+scores2<-merge(scores,countries[,1:2],by.x="home",by.y="Team_Fr")
+scores2<-merge(scores2,countries[,1:2],by.x="away",by.y="Team_Fr")
+names(scores2)<-c("away_fr","home_fr","Group","Score_Home","Score_Away","match_id","home","away")
+scores2<-scores2 %>% select(Group,match_id,home,Score_Home,Score_Away,away)
+write_xlsx(scores2,"runapp/www/scores.xlsx")
+
+
+load("runapp/www/elo_and_proba/2026-06-21Proba_list.Rdata")
+old_proba<-list
+# for(i in seq_along(list)) {
+#     
+#     scores_num <- do.call(
+#         rbind,
+#         strsplit(list[[i]]$name, ":", fixed = TRUE)
+#     )
+#     
+#     list[[i]]$home_score <- as.integer(scores_num[,1])
+#     list[[i]]$away_score <- as.integer(scores_num[,2])
+# }
+
+
+
+
+
+
+
 
 
 # 1) RECOVER PROBA WINAMAX -----------------------------------------------------
 #a changer car elle change avec le temps.
-new_url_stats<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/stats_match_form/66457028?T=exp=1782223488~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=dd7c1372c57556abc178ba5971bb09317b67539b43de1856d5b917f0bd361d7e"
-new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_markets/66457028?T=exp=1782223488~acl=/*~data=eyJvIjoiaHR0cHM6Ly93d3cud2luYW1heC5mciIsImEiOiJjMWQ4ODE1MWJiNjE0MGNjZjk2NzU5ZjEzM2RiYTAyZiIsImFjdCI6Im9yaWdpbmlnbm9yZWQiLCJvc3JjIjoib3JpZ2luIn0~hmac=dd7c1372c57556abc178ba5971bb09317b67539b43de1856d5b917f0bd361d7e"
 
 
 
@@ -119,7 +172,7 @@ new_url_market<-"https://lmt.fn.sportradar.com/common/fr/Etc:UTC/gismo/match_mar
 
 
 
-
+scores<-read_xlsx("runapp/www/scores.xlsx")
 match_ids<-scores$match_id[is.na(scores$Score_Home)]
 n_match<-6*12
 
@@ -154,6 +207,8 @@ save(list,file=paste0(Sys.Date(),"Proba_list.Rdata"))
 
 
 #ou a partir url
+
+
 
 url_elo<-'https://www.eloratings.net/World.tsv?_=1780235318230'
 res_elo <- GET(url_elo, add_headers(

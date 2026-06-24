@@ -72,6 +72,7 @@ annexe <- read.csv(
 annexe$combination <- apply(annexe, 1, function(x) {
     paste(sort(x), collapse = "/")
 })
+browser()
 
 scores<-read_xlsx("www/scores.xlsx")
 n_groups <- length(unique(scores$Group))
